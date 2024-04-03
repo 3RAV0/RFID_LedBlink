@@ -1,0 +1,83 @@
+#include <SPI.h>                          //including SPI lib.
+#include <MFRC522.h>                      //including RFID lib.
+
+
+int res_pin = 9;                          //declaring RC522 modul's reset pin.
+int ss_pin = 10;                          //declaring RC522 modul's select pin.
+
+
+int led1 = 7;                             //declaring welcome pin.
+int led2 = 6;                             //declaring go away pin (LOL).
+
+
+
+MFRC522 rfid(ss_pin, res_pin);            //setting rfid card using it's library.
+byte ID[][4] = {
+  {163, 226, 99, 16},
+  {19, 32, 18, 248},
+  {132, 173, 190, 1001},                  //declaring allowed IDs with two dimensional byte array.
+  {4, 95, 197, 115},
+  {4, 216, 51, 98},
+  {4, 205, 168, 115},
+  {4, 159, 163, 97},
+  {4, 90, 135, 170}
+  };           
+
+
+void setup() { 
+  Serial.begin(9600);                     //starts serial communication.
+  SPI.begin();                            //starts SPI communication.
+  rfid.PCD_Init();                        //starts RFID modul.
+  pinMode(led1, OUTPUT);                  //sets led1 as output.
+  pinMode(led2, OUTPUT);                  //sets led1 as output.
+  
+
+}
+ 
+void loop() {
+  int j = 0;
+  if ( ! rfid.PICC_IsNewCardPresent())    //looks for a new card.
+    return;
+
+  if ( ! rfid.PICC_ReadCardSerial())      //wait until a card has been touched.
+    return;
+
+  for(int i = 0; i< 8; i++){
+    if (rfid.uid.uidByte[0] == ID[i][0] &&     //when a card is approached, it checks if its ID is allowed.
+    rfid.uid.uidByte[1] == ID[i][1] && 
+    rfid.uid.uidByte[2] == ID[i][2] && 
+    rfid.uid.uidByte[3] == ID[i][3] ) {
+        Serial.println("Welcome");
+        printIt();
+        digitalWrite(led1, HIGH);                 
+        delay(500);
+        digitalWrite(led1, LOW);                  
+        
+        j++;               // j is used for controlling whether any of the registered addresses match.
+        break;
+        rfid.PICC_HaltA();
+      }
+    }
+    if(j == 0){                          //After checking any registered ID, if j is 0, it means that the scanned 
+          Serial.println("Go Away");    //card's ID did not match any of the registered IDs, and the red light will be turned on.
+          printIt();
+          digitalWrite(led2, HIGH);     //If there is any unauthorized entry, these lines will be activated.
+          delay(500);
+          digitalWrite(led2, LOW);  
+          
+    }
+
+    rfid.PICC_HaltA();
+    
+}
+    
+  
+
+void printIt(){         //It is a function that helps us see the ID in the serial monitor.
+  Serial.print("ID NUM: ");
+  for(int count = 0; count < 4; count++){
+    Serial.print(rfid.uid.uidByte[count]);
+    Serial.print(" ");
+  }
+  Serial.println("");
+}
